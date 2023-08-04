@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JS Gamepad Input</title>
+    <style type="text/css">
+    td {
+        width: 100px;
+        height: 100px;
+        font-size: 100px;
+        color: white;
+        text-align: center;
+        /*        display: inline-block;*/
+    }
+
+    log {
+        font-family: monospace;
+    }
+
+    .axis {
+        display: block;
+        background: green;
+
+    }
+
+    .xAxis {
+        height: 100%;
+    }
+
+    .yAxis {
+        position: absolute;
+        width: 100%;
+    }
+
+    .up {
+        bottom: 0px;
+    }
+
+    .down {
+        top: 0px;
+    }
+
+    .left {
+        float: right;
+    }
+    </style>
+    <script type="text/javascript" src="p5.ble.js"></script>
+    <script type="text/javascript" src="p5.min.js"></script>
+    <script type="text/javascript">
+    let blueToothCharacteristic; //this is a blu
+    let receivedValue = "";
+
+    let blueTooth;
+    let isConnected = false;
+
+
+    var millisecondTimerStart;
+    var oldColorPickerValue;
+
+
+    function setup() {
+        blueTooth = new p5ble();
+        // connectToBle();
+
+
+
+        millisecondTimerStart = millis();
+    }
+
+    function connectToBle() {
+        // Connect to a device by passing the service UUID
+        blueTooth.connect(0xFFE0, gotCharacteristics);
+    }
+
+
+    // A function that will be called once got characteristics
+    function gotCharacteristics(error, characteristics) {
+        if (error) {
+            console.log('error: ', error);
+        }
+        console.log('characteristics: ', characteristics);
+        blueToothCharacteristic = characteristics[0];
+
+        blueTooth.startNotifications(blueToothCharacteristic, gotValue, 'string');
+
+
+        isConnected = blueTooth.isConnected();
+        // Add a event handler when the device is disconnected
+        blueTooth.onDisconnected(onDisconnected);
+    }
+
+
+    // A function that will be called once got values
+    function gotValue(value) {
+        console.log('value: ', value);
+        if (value == 'Push Button') {
+            receivedValue = "Push Button Pressed";
+        } else {
+            receivedValue = " ";
+        }
+    }
+
+
+    function onDisconnected() {
+        console.log('Device got disconnected.');
+        isConnected = false;
+    }
+    function encodeText(str){
+        return new Uint8Array(str.split("").map(e=>e.charCodeAt(0)));
+    }
+    var sendingData = false;
+
+    function sendData(command) {
+        if (sendingData) { return; }
+        let packet = new Uint8Array(2); // 2 bytes
+        packet[0] = 10;
+        packet[1] = 100;
+
+        sendingData = true;
+        const inputValue = command;
+        if (!("TextEncoder" in window)) {
+            console.log("Sorry, this browser does not support TextEncoder...");
+        }
+        // var enc = new TextEncoder(); // always utf-8
+        try {
+            console.log("sending:", inputValue, packet, encodeText(inputValue));
+            // blueToothCharacteristic.writeValueWithoutResponse(enc.encode(inputValue));
+            blueToothCharacteristic.writeValueWithoutResponse(packet);
+            // blueToothCharacteristic.writeValue(packet);
+            // blueToothCharacteristic.writeValueWithResponse(new Uint8Array(packet));
+        } catch (e) {}
+        sendingData = false;
+    }
+    var log = console.log;
+    // console.log = function() {
+    //     var arr = Array.from(arguments);
+    //     arr.unshift("test");
+    //     arr = arr.join(" ");
+    //     var el = document.createElement("log");
+    //     el.innerHTML = arr.replaceAll(" ", "&nbsp;").replaceAll("\n", "<br>");
+    //     var cons = document.getElementById("console");
+    //     cons.append(el);
+    //     cons.append(document.createElement("br"));
+    //     cons.scrollTop = cons.scrollHeight;
+    //     log.apply(console, arguments);
+    // }
+    window.onload = function() {
+        // var a = navigator.getGamepads();
+        // clearInterval(interval)
+        console.log("loaded");
+        var interval = setInterval(() => {
+            var a = navigator.getGamepads();
+            if (!a[0]) {
+                return;
+            }
+            // console.log(a[0].buttons.map(e => e.value).join(" "));
+            update(a[0].axes, a[0].buttons.map(e => e.value));
+        }, 100);
+        /*axes
+        
+        */
+        /*buttons
+        
+        */
+    }
+
+    function axisPair(min, max, value, style) {
+        // value = parseFloat(value);
+        // console.log(value);
+        document.getElementById(min).style[style] = ((value > 0) ? 0 : (value * -100)) + "%";
+        document.getElementById(max).style[style] = ((value < 0) ? 0 : (value * 100)) + "%";
+    }
+
+    function update(axes, buttons) {
+        // .map((e,n)=>{
+        //     return e*(n%2===1?-1:1);
+        // })
+        // console.group();
+        axisPair("lx-", "lx+", axes[0], "width");
+        axisPair("ly-", "ly+", axes[1] * -1, "height");
+        axisPair("rx-", "rx+", axes[2], "width");
+        axisPair("ry-", "ry+", axes[3] * -1, "height");
+        // console.groupEnd();
+        ["lx+/-", "ly+/-", "rx+/-", "ry+/-"].forEach((e, n) => {
+            // try {
+            // var mult = 1;
+            // if()
+            // var b = e.split("/");
+            // b[1] = b[0].substring(0, 2) + b[1];
+            // console.log(e + ": " + axes[n])
+            // document.getElementById(b[0]).style.background = (axes[n] > 0.5 ? "green" : "black");
+            // document.getElementById(b[1]).style.background = (axes[n] < -0.5 ? "green" : "black");
+
+
+            // } catch (err) {
+            //     console.log("error: " + e)
+            // }
+        });
+        ["a", "b", "x", "y", "l1", "r1", "l2", "r2", "select", "start", "l3", "r3", "dpad_up", "dpad_down", "dpad_left", "dpad_right", "home"].forEach((e, n) => {
+            try {
+                document.getElementById(e).style.background = (buttons[n] > 0.5 ? "green" : "black");
+            } catch (err) {
+                console.log("error: " + e);
+            }
+        });
+        buttons[6] = Math.floor(buttons[6] * 100);
+        buttons[7] = Math.floor(buttons[7] * 100);
+        var data = [...axes.map(e => {
+            return Math.floor(e * 100);
+        }), ...buttons];
+        console.log(data);
+    }
+    </script>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td id="l2" style="background:black;">L2</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><button onclick="(()=>{debugger})()">debugger</button></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td id="r2" style="background:black;">R2</td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <td id="l1" style="background:black;">L1</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td>
+                <button onclick="connectToBle();">connect</button>
+            </td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td id="r1" style="background:black;">R1</td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <td></td>
+            <td id="dpad_up" style="background:black;">↑</td>
+            <td colspan="9"></td>
+            <td id="y" style="background:black;">Y</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td id="dpad_left" style="background:black;">←</td>
+            <td></td>
+            <td id="dpad_right" style="background:black;">→</td>
+            <td></td>
+            <td id="select" style="background:black;">SE</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td id="start" style="background:black;">ST</td>
+            <td></td>
+            <td id="x" style="background:black;">X</td>
+            <td></td>
+            <td id="b" style="background:black;">B</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td id="dpad_down" style="background:black;">↓</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td id="home" style="background:black;">Home</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td id="a" style="background:black;">A</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="position: relative;"><span id="ly+" style="height: 0px;" class="yAxis axis up"></span></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="position: relative;"><span id="ry+" style="height: 0px;" class="yAxis axis up"></span></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td><span id="lx-" style="width: 0px;" class="xAxis axis left"></span></td>
+            <td id="l3" style="background:black;">L3</td>
+            <td><span id="lx+" style="width: 0px;" class="xAxis axis right"></span></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><span id="rx-" style="width: 0px;" class="xAxis axis left"></span></td>
+            <td id="r3" style="background:black;">R3</td>
+            <td><span id="rx+" style="width: 0px;" class="xAxis axis right"></span></td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="position: relative;"><span id="ly-" style="height: 0px;" class="yAxis axis down"></span></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td style="position: relative;"><span id="ry-" style="height: 0px;" class="yAxis axis down"></span></td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </table><br>
+    <!-- <span id="console"></span> -->
+    <span id="console" style="position: absolute; border-style: solid; overflow: auto; width:400px; height: 100px;"></span>
+</body>
+
+</html>
